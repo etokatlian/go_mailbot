@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/smtp"
+	"strings"
 
 	"github.com/gocolly/colly"
 )
@@ -18,8 +19,13 @@ type request struct {
 	body    string
 }
 
+type htmlData struct {
+	Link string
+	Img  string
+}
+
 type templateData struct {
-	Names []string
+	Data []htmlData
 }
 
 func main() {
@@ -29,16 +35,36 @@ func main() {
 		colly.AllowedDomains("www.amctheatres.com"),
 	)
 
-	c.OnHTML("div[class=slick-track]", func(e *colly.HTMLElement) {
-		text := e.ChildTexts("h3")
-		stripped := unique(text)
-		m.Names = stripped
+	c.OnHTML("div[class=slick-list]", func(e *colly.HTMLElement) {
+		links := e.ChildAttrs("a", "href")
+		images := e.ChildAttrs("img", "src")
+		uniqueImages := unique(images)
+		uniqueLinks := unique(links)
+		showtimesRemoved := []string{}
+		for _, link := range uniqueLinks {
+			if !strings.Contains(link, "showtimes") {
+				link = fmt.Sprintf("https://www.amctheatres.com%s", link)
+				showtimesRemoved = append(showtimesRemoved, link)
+			}
+		}
+
+		out := []htmlData{}
+
+		for i := range uniqueImages {
+			t := htmlData{
+				Link: showtimesRemoved[i],
+				Img:  uniqueImages[i],
+			}
+			out = append(out, t)
+		}
+
+		m.Data = out
 	})
 
 	c.Visit("https://www.amctheatres.com/movie-theatres/phoenix/amc-ahwatukee-24")
 
 	auth = smtp.PlainAuth("", "etokatlian@gmail.com", "", "smtp.gmail.com")
-	r := newRequest([]string{"etokatlian@gmail.com"}, "This weeks movie briefing", "Hello, World!")
+	r := newRequest([]string{"etokatlian@gmail.com", "tsmith93036@gmail.com"}, "This weeks movie briefing", "Hello, World!")
 	err := r.ParseTemplate("template.html", m)
 	if err := r.ParseTemplate("template.html", m); err == nil {
 		ok, _ := r.SendEmail()

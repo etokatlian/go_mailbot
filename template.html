@@ -3,8 +3,12 @@
 <body>
   <h2>Here are the movies playing in theaters this week:</h2>
   <ul>
-    {{range .Names}}
-    <li>{{.}}</li>
+    {{range .Data}}
+    <li>
+      <a href={{.Link}}>
+        <img src={{.Img}} alt="">
+      </a>
+    </li>
     {{end}}
   </ul>
 </body>
